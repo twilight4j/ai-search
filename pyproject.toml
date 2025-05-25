@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "ai-search"
+version = "0.1.0"
+description = "AI-powered product search API for e-commerce platform"
+authors = ["jaeyulim <jaeyulim@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fastapi = "^0.109.2"
+uvicorn = "^0.27.1"
+python-dotenv = "^1.0.1"
+langchain = "^0.1.9"
+langchain-openai = "^0.0.5"
+faiss-cpu = "^1.7.4"
+sqlalchemy = "^2.0.27"
+cx-Oracle = "^8.3.0"
+pydantic = "^2.6.1"
+python-multipart = "^0.0.9"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api" 
