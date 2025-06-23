@@ -8,6 +8,7 @@ from langchain_openai.embeddings import OpenAIEmbeddings
 from langchain_community.retrievers import BM25Retriever
 from langchain.retrievers import EnsembleRetriever
 from langchain.schema import Document
+from langchain_core.runnables import ConfigurableField
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -58,13 +59,23 @@ class SearchEngineManager:
                 self.faiss_db = FAISS.from_documents(sample_docs, self.embeddings)
             
             # 검색기 초기화
-            self.faiss_retriever = self.faiss_db.as_retriever(
-                search_type="similarity", # similarity, similarity_score_threshold, mmr
-                search_kwargs={
-                    "k": 30, # 상위 30개 결과 반환
-                    # "score_threshold": 0.7, #similarity_score_threshold 일 경우 사용 가능
-                    # "filter": filter_dict
-                } ,  
+            # self.faiss_retriever = self.faiss_db.as_retriever(
+            #     search_type="similarity", # similarity, similarity_score_threshold, mmr
+            #     search_kwargs={
+            #         "k": 30, # 상위 30개 결과 반환
+            #         # "score_threshold": 0.7, #similarity_score_threshold 일 경우 사용 가능
+            #         # "filter": filter_dict
+            #     } ,  
+            # )
+            self.faiss_retriever = self.faiss_db.as_retriever(search_kwargs={"k": 1}).configurable_fields(
+                search_kwargs=ConfigurableField(
+                    # 검색 매개변수의 고유 식별자를 설정
+                    id="search_kwargs",
+                    # 검색 매개변수의 이름을 설정
+                    name="Search Kwargs",
+                    # 검색 매개변수에 대한 설명을 작성
+                    description="The search kwargs to use",
+                )
             )
             
             # BM25 검색기를 위한 문서 준비

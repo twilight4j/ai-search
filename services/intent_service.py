@@ -15,12 +15,12 @@ class IntentService:
 
         # 원하는 데이터 구조를 정의합니다.
         class Filter(BaseModel):
-            NATURAL_LANGUAGE: str = Field(description="사용자 검색어를 자연스러운 문장으로 변환.")
+            NATURAL_LANGUAGE: str = Field(description="사용자 검색어를 자연스러운 요구형 문장으로 변환.")
             SALE_PRC_GTE: int = Field(description="가격범위 최소값. 예를 들어 100만원 이상 120만원 이하이면, 1000000")
             SALE_PRC_LTE: int = Field(description="가격범위 최대값. 예를 들어 100만원 이상 120만원 이하이면, 1200000")
             BRND_NM: str = Field(description="브랜드명")
             ARTC_NM: str = Field(description="품목")
-            CATEGORY_NM: str = Field(description="""카테고리명. 다음 카테고리 예시 중 반드시 1개. 
+            LGRP_NM: str = Field(description="""카테고리명. 다음 카테고리 예시 중 반드시 1개. 
         안심케어
         전문가 화상상담
         1인 가구를 위한 나노스퀘어 
@@ -69,6 +69,5 @@ class IntentService:
 
         # 체인을 호출하여 쿼리 실행
         answer = chain.invoke({"query": query})
-        print(f"{query}: {answer}")
 
         return answer

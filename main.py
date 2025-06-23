@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Optional, Literal
+from typing import List, Optional, Literal
 import uvicorn
 import logging
 from core.search_engine import SearchEngineManager
@@ -11,6 +11,7 @@ from typing import Annotated
 from contextlib import asynccontextmanager
 from services.pagination_service import PaginationService
 from services.intent_service import IntentService
+from services.filter_service import FilterService
 from utils import tokenizer, NL_processor
 
 # 로깅 설정
@@ -94,9 +95,9 @@ async def search_products(
         description="페이지당 결과 수"
     ),
     retriever_type: Annotated[
-        Literal["none", "bm25", "faiss", "faiss_with_score", "bm25_faiss_73", "bm25_faiss_37"],
+        Literal["bm25", "faiss", "bm25_faiss_73", "bm25_faiss_37"],
         Query(description="검색 방식")
-    ] = "none",
+    ] = "faiss",
 ):
     try:
         if not search_manager._initialized:
@@ -105,47 +106,31 @@ async def search_products(
         if not query.strip():
             raise HTTPException(status_code=400, detail="검색 쿼리가 비어있습니다.")
 
-        
-        # # 쿼리가 키워드 기반인지 자연어 인지 판단하여 검색기 선택
-        # if retriever_type == "none":
-        #     query_type = NL_processor.classify_query_type(query)
-        #     logger.info(f"쿼리타입: {query_type}")
-        #     if query_type == "keyword":
-        #         retriever_type = "bm25_faiss_73"
-        #     else:
-        #         retriever_type = "bm25_faiss_37"
-
-        # # 검색 수행
-        # if retriever_type == "faiss_with_score":
-        #     vectorstore = search_manager.get_vectorestore("faiss")
-        #     results = vectorstore.similarity_search_with_score(query, k=2)
-        #     # for i, (doc, score) in enumerate(results, 1):
-        #     #     print(f"유사도: {score}") # 낮을수록 더 유사함
-        #     #     print(f"- 상품명: {doc.metadata.get('GOODS_NM', '정보 없음')}")
-        #     #     print(f"- 카테고리: {doc.metadata.get('CATEGORY_NMS', '정보 없음')}")
-        # elif retriever_type == "bm25" or retriever_type == "bm25_faiss_73":
-        #     retriever = search_manager.get_retriever(retriever_type)
-        #     # query에서 명사만 추출
-        #     tokenized_query = tokenizer.kiwi_tokenized_query(query) 
-        #     results = retriever.invoke(tokenized_query)
-        # else:
-        #     retriever = search_manager.get_retriever(retriever_type)
-        #     results = retriever.invoke(query)   
-
+        # 1. 의도 분석
+        # LLM을 통한 의도 분석
         intent = IntentService.intent_with_llm(query)
 
+        # 의도 기반 사용자 쿼리
         intented_query = intent['NATURAL_LANGUAGE']
+        print(f"의도 기반 사용자 쿼리: {intented_query}")
 
-        # print(f"NATURAL_LANGUAGE: {intent[NATURAL_LANGUAGE}]")
+        # 2. 필터 생성
+        # 의도 기반 필터
+        filter_dict = FilterService.intent_based_filtering(query, intent)
+        print(f"의도 기반 필터: {filter_dict}")
 
+        # 3. 검색
+        # 의도 기반 사용자 쿼리와 필터를 넣고 검색
         retriever = search_manager.get_retriever(retriever_type)
-        results = retriever.invoke(intented_query)   
+        config = {"configurable": {"search_kwargs": {"filter": filter_dict}}}
+        results = retriever.invoke(intented_query, config=config)
 
-        # 정렬 수행
+        # 4. 정렬
         sorted_results = SortService.sort_products(results)
 
         # TODO: 검색어를 key로 캐시를 사용한다면  여기에 구현
 
+        # 5. 페이징
         # 정렬된 결과를 페이지네이션 처리
         paginated_results = PaginationService.paginate(
             items=sorted_results,
@@ -153,8 +138,9 @@ async def search_products(
             page_size=pageSize
         )
 
+        # 6. 결과 변환
         # ResultConverter를 사용하여 결과 변환
-        products:ProductResponse = ResultConverter.convert_to_products(paginated_results['items'])
+        products:List[ProductResponse] = ResultConverter.convert_to_products(paginated_results['items'])
         
         return SearchResponse(
             products=products,

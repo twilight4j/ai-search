@@ -2,7 +2,7 @@
 name = "ai-search"
 version = "0.0.1"
 description = "AI-powered product search API for e-commerce platform"
-authors = ["jaeyulim <jaeyulim@gmail.com>"]
+authors = ["jaeyulim <twilight4j@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
