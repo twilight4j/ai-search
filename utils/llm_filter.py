@@ -3,10 +3,13 @@ import re
 def price_filter_with_llm(query, intent):
     filter_dict = {}
     # 가격
-    if '가격' in query or '저렴' in query:
-        if "SALE_PRC" not in filter_dict:
-            filter_dict["SALE_PRC"] = {}
+    # if '가격' in query or '저렴' in query:
+    if "SALE_PRC" not in filter_dict:
+        filter_dict["SALE_PRC"] = {}
+    
+    if intent["SALE_PRC_GTE"] > 0:
         filter_dict["SALE_PRC"]["$gte"] = intent["SALE_PRC_GTE"]
+    if intent["SALE_PRC_LTE"] > 0:
         filter_dict["SALE_PRC"]["$lte"] = intent["SALE_PRC_LTE"]
     return filter_dict
 

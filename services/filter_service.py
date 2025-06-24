@@ -21,7 +21,7 @@ class FilterService:
         # filter_dict.update(brand_filter_with_llm(query, intent))
 
         # 카테고리 필터
-        filter_dict.update(category_filter_with_llm(query, intent))
+        # filter_dict.update(category_filter_with_llm(query, intent))
 
         # 품목 필터
         # filter_dict.update(artc_filter_with_llm(query, intent))

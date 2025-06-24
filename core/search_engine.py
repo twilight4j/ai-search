@@ -53,10 +53,7 @@ class SearchEngineManager:
                 )
                 logger.info(f"FAISS 데이터베이스 로드 완료: {persist_directory}")
             else:
-                logger.warning(f"FAISS 데이터베이스를 찾을 수 없습니다: {persist_directory}")
-                # 빈 FAISS 인덱스 생성 (테스트용)
-                sample_docs = [Document(page_content="샘플 상품", metadata={"goodsNo": "sample_001"})]
-                self.faiss_db = FAISS.from_documents(sample_docs, self.embeddings)
+                logger.error(f"FAISS 데이터베이스를 찾을 수 없습니다: {persist_directory}")
             
             # 검색기 초기화
             # self.faiss_retriever = self.faiss_db.as_retriever(
@@ -67,7 +64,9 @@ class SearchEngineManager:
             #         # "filter": filter_dict
             #     } ,  
             # )
-            self.faiss_retriever = self.faiss_db.as_retriever(search_kwargs={"k": 1}).configurable_fields(
+            self.faiss_retriever = self.faiss_db.as_retriever(search_kwargs={"k": 100})
+
+            self.configuable_faiss_retriever = self.faiss_db.as_retriever().configurable_fields(
                 search_kwargs=ConfigurableField(
                     # 검색 매개변수의 고유 식별자를 설정
                     id="search_kwargs",
@@ -88,7 +87,7 @@ class SearchEngineManager:
                         # k1=1.2,
                         # b=0.75
                         )
-                    self.bm25_retriever.k = 30
+                    self.bm25_retriever.k = 500
                     logger.info(f"BM25 검색기 초기화 완료: {len(all_docs)}개 문서")
                 else:
                     logger.warning("BM25 검색기 초기화 실패: 문서가 없습니다")
@@ -155,6 +154,8 @@ class SearchEngineManager:
             return self.bm25_faiss_73_retriever
         elif retriever_type == "bm25_faiss_37":
             return self.bm25_faiss_37_retriever
+        elif retriever_type == "configuable_faiss":
+            return self.configuable_faiss_retriever
         else:
             raise ValueError(f"지원하지 않는 검색기 타입: {retriever_type}")
     

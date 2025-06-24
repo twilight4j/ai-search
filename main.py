@@ -3,15 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List, Optional, Literal
 import uvicorn
 import logging
+import time
 from core.search_engine import SearchEngineManager
-from services.result_converter import ResultConverter
+from core.llm_manager import LLMManager
+from services.result_service import ResultService
 from services.sort_service import SortService
 from models.response import ProductResponse, SearchResponse
 from typing import Annotated
 from contextlib import asynccontextmanager
 from services.pagination_service import PaginationService
-from services.intent_service import IntentService
 from services.filter_service import FilterService
+from services.llm_service import LLMService
 from utils import tokenizer, NL_processor
 
 # 로깅 설정
@@ -28,6 +30,7 @@ async def lifespan(app: FastAPI):
     try:
         # 서버 시작 시 실행될 코드 (startup)
         search_manager.initialize()
+        llm_manager.initialize()
         logger.info("서버 시작 완료")
     except Exception as e:
         logger.error(f"서버 시작 중 오류: {e}")
@@ -62,6 +65,7 @@ app.add_middleware(
 
 # 전역 매니저
 search_manager = SearchEngineManager()
+llm_manager = LLMManager()
 
 @app.get("/")
 async def root():
@@ -89,48 +93,83 @@ async def search_products(
         description="페이지 번호"
     ),
     pageSize: int = Query(
-        default=30,
+        default=10,
         ge=1,
         le=100,
         description="페이지당 결과 수"
     ),
     retriever_type: Annotated[
-        Literal["bm25", "faiss", "bm25_faiss_73", "bm25_faiss_37"],
+        Literal["bm25", "faiss", "bm25_faiss_73", "bm25_faiss_37", "intent_with_llm", "use_llm"],
         Query(description="검색 방식")
-    ] = "faiss",
+    ] = "intent_with_llm",
 ):
     try:
+        timestamp = time.time()
         if not search_manager._initialized:
             raise HTTPException(status_code=503, detail="검색 엔진이 아직 초기화되지 않았습니다.")
+        
+        if not llm_manager._initialized:
+            raise HTTPException(status_code=503, detail="의도분석 LLM이 아직 초기화되지 않았습니다.")
         
         if not query.strip():
             raise HTTPException(status_code=400, detail="검색 쿼리가 비어있습니다.")
 
-        # 1. 의도 분석
-        # LLM을 통한 의도 분석
-        intent = IntentService.intent_with_llm(query)
+        # [검색]
+        if retriever_type == "intent_with_llm":
 
-        # 의도 기반 사용자 쿼리
-        intented_query = intent['NATURAL_LANGUAGE']
-        print(f"의도 기반 사용자 쿼리: {intented_query}")
+            # 1. 의도 분석
+            # LLM을 통한 의도 분석
+            intent_chain = llm_manager.get_intent_chain()
+            intent = intent_chain.invoke({"query": query})
 
-        # 2. 필터 생성
-        # 의도 기반 필터
-        filter_dict = FilterService.intent_based_filtering(query, intent)
-        print(f"의도 기반 필터: {filter_dict}")
+            # 의도 기반 사용자 쿼리
+            intented_query = intent['INTENTED_QUERY']
+            print(f"의도 기반 사용자 쿼리: {intented_query}")
 
-        # 3. 검색
-        # 의도 기반 사용자 쿼리와 필터를 넣고 검색
-        retriever = search_manager.get_retriever(retriever_type)
-        config = {"configurable": {"search_kwargs": {"filter": filter_dict}}}
-        results = retriever.invoke(intented_query, config=config)
+            # 2. 필터 생성
+            # 의도 기반 필터
+            filter_dict = FilterService.intent_based_filtering(query, intent)
+            print(f"의도 기반 필터: {filter_dict}")
 
-        # 4. 정렬
+            # 3. 검색
+            # 의도 기반 사용자 쿼리와 필터를 넣고 검색
+            retriever = search_manager.get_retriever("configuable_faiss")
+            # 검색기에 필터를 적용하면 개수가 이상하게 적어지는 현상이 있음
+            # config = {"configurable": {"search_kwargs": {"k": 100, "filter": filter_dict}}}
+            config = {"configurable": {"search_kwargs": {"k": 100}}}
+            results = retriever.invoke(intented_query, config=config)
+            # 그래서 검색 후 수동으로 필터링 함
+            # config = {"configurable": {"search_kwargs": {"k": 100}}}
+            # results = retriever.invoke(intented_query, config=config)
+            
+        elif retriever_type == "use_llm":
+            retriever = search_manager.get_retriever("faiss")
+            answers = LLMService.search_proudct(query, retriever)
+            print(f"답변: {answers}")
+
+            # LLM 답변에 포함된 goodsNo 리스트 추출 (효율적인 조회를 위해 set 사용)
+            answer_goods_nos = set()
+            if isinstance(answers, list):
+                answer_goods_nos = {answer['goodsNo'] for answer in answers if 'goodsNo' in answer}
+            elif isinstance(answers, dict) and 'goodsNo' in answers:
+                answer_goods_nos = {answers['goodsNo']}
+
+            # FAISS에서 전체 문서 가져오기
+            all_docs = search_manager._get_all_documents_from_faiss()
+
+            # goodsNo를 기준으로 문서 필터링
+            results = [doc for doc in all_docs if doc.metadata.get('GOODS_NO') in answer_goods_nos]
+            print(f"결과: {results}")
+        else:
+            retriever = search_manager.get_retriever(retriever_type)
+            results = retriever.invoke(query)
+
+        # [정렬]
         sorted_results = SortService.sort_products(results)
 
-        # TODO: 검색어를 key로 캐시를 사용한다면  여기에 구현
+        # TODO: 검색어를 key로 캐시를 사용한다면 여기에 구현
 
-        # 5. 페이징
+        # [페이징]
         # 정렬된 결과를 페이지네이션 처리
         paginated_results = PaginationService.paginate(
             items=sorted_results,
@@ -138,9 +177,11 @@ async def search_products(
             page_size=pageSize
         )
 
-        # 6. 결과 변환
+        # [결과 변환]
         # ResultConverter를 사용하여 결과 변환
-        products:List[ProductResponse] = ResultConverter.convert_to_products(paginated_results['items'])
+        products:List[ProductResponse] = ResultService.convert_to_products(paginated_results['items'])
+        
+        print(f"⚡ 소요 시간: {time.time() - timestamp:.2f}초")
         
         return SearchResponse(
             products=products,
