@@ -25,19 +25,16 @@ class LLMManager:
         
         try:
 
-            logger.info("의도분석 LLM 초기화 시작...")
+            logger.info("LLM 초기화 시작...")
 
             # 원하는 데이터 구조를 정의합니다.
-            class Filter(BaseModel):
-                INTENTED_QUERY: str = Field(description="사용자 검색어에서 가격의도는 빼고 자연스런 문장으로 변환.")
-                SALE_PRC_GTE: int = Field(description="가격범위 최소값. 예를 들어 100만원 이상 120만원 이하이면, 1000000. 가격에 대한 의도가 없다면 0.")
-                SALE_PRC_LTE: int = Field(description="가격범위 최대값. 예를 들어 100만원 이상 120만원 이하이면, 1200000. 가격에 대한 의도가 없다면 0.")
+            class Intent(BaseModel):
+                INTENTED_QUERY: str = Field(description="사용자 검색어에서 가격 관련 내용은 제거하고 자연스런 문장으로 변환.")
+                PRICE_GTE: int = Field(description="가격범위 최소값. 예를 들어 100만원 이상 120만원 이하이면, 1000000. 가격에 대한 의도가 없다면 0.")
+                PRICE_LTE: int = Field(description="가격범위 최대값. 예를 들어 100만원 이상 120만원 이하이면, 1200000. 가격에 대한 의도가 없다면 0.")
                 BRND_NM: str = Field(description="브랜드명")
                 ARTC_NM: str = Field(description="품목")
-                LGRP_NM: str = Field(description="""카테고리명. 다음 카테고리 예시 중 2개. 
-            안심케어
-            전문가 화상상담
-            1인 가구를 위한 나노스퀘어 
+                LGRP_NM: list[str] = Field(description="""카테고리명. 다음 예시 중 적합한 카테고리 최대 3개. 
             TV·영상가전
             가구·인테리어
             태블릿·이북리더기
@@ -49,7 +46,7 @@ class LLMManager:
             휴대폰·스마트워치
             생활·주방용품
             세탁기·건조기·의류관리기
-            에어컨·계절가전
+            에어컨·계절가전(description=공기청정기, 냉난방기 포함)
             청소기·생활가전
             카메라
             컴퓨터·노트북
@@ -57,12 +54,15 @@ class LLMManager:
             음향가전
             뷰티·이미용가전
             문구·악기·공구
-            가전 수리비 보장 가전보험
-            방문컨설팅""")
+            안심케어(description=가전제품 클리닝, 교체, 이사, 재설치 등의 서비스)
+            방문컨설팅(description=가전제품 고장, 수리 서비스)
+            전문가 화상상담(description=영상통화로 구매 상담이 가능한 제품 모음)
+            1인 가구를 위한 나노스퀘어(description=1인 세대를 위한 소형가전 모음)""")
                 FEATURES: str = Field(description="주요기능")
+                CARD_NMS: list[str] = Field(description="카드이름")
 
             # 파서를 설정하고 프롬프트 템플릿에 지시사항을 주입합니다.
-            parser = JsonOutputParser(pydantic_object=Filter)
+            parser = JsonOutputParser(pydantic_object=Intent)
             # print(parser.get_format_instructions())
 
             # 프롬프트를 생성합니다.
@@ -82,10 +82,10 @@ class LLMManager:
             self.intent_chain = prompt | model | parser
 
             self._initialized = True
-            logger.info(f"의도분석 LLM 체인구성 완료!")
+            logger.info(f"LLM 체인구성 완료!")
             
         except Exception as e:
-            logger.error(f"검색 엔진 초기화 실패: {e}")
+            logger.error(f"LLM 초기화 실패: {e}")
             raise e
     
     def get_intent_chain(self):

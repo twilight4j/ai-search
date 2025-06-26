@@ -28,14 +28,18 @@ class ProductResponse(BaseModel):
     energeyGrade: str = Field(..., description="에너지효율등급")
     mdlLnchDt: str = Field(..., description="모델출시일")
     similarity_score: float = Field(..., description="유사도 점수", ge=0.0, le=1.0)
-    similarity_rank: int = Field(..., description="유사도 랭킹")
+    weight: float = Field(..., description="가중치")
+    weight_analysis: str = Field(..., description="가중치분석")
     content: Optional[str] = Field(None, description="상품 내용 미리보기")
 
 
 class SearchResponse(BaseModel):
     """검색 응답 모델"""
-    products: List[ProductResponse] = Field(..., description="검색된 상품 목록")
+    intent: str = Field(..., description="의도분석결과")
+    intented_query: str = Field(..., description="의도기반 사용자 쿼리")
+    filter_dict: str = Field(..., description="의도기반 필터")
     total_count: int = Field(..., description="전체 검색 결과 수", ge=0)
     page: int = Field(..., description="현재 페이지", ge=1)
     page_size: int = Field(..., description="페이지 크기", ge=1)
     total_pages: int = Field(..., description="전체 페이지 수", ge=0)
+    products: List[ProductResponse] = Field(..., description="검색된 상품 목록")

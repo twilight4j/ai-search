@@ -114,6 +114,11 @@ async def search_products(
         if not query.strip():
             raise HTTPException(status_code=400, detail="검색 쿼리가 비어있습니다.")
 
+        # 검색할 최대 문서 수
+        top_k = 100
+        # 의도
+        intent = {}
+
         # [검색]
         if retriever_type == "intent_with_llm":
 
@@ -121,6 +126,7 @@ async def search_products(
             # LLM을 통한 의도 분석
             intent_chain = llm_manager.get_intent_chain()
             intent = intent_chain.invoke({"query": query})
+            print(f"의도 분석: {intent}")
 
             # 의도 기반 사용자 쿼리
             intented_query = intent['INTENTED_QUERY']
@@ -134,17 +140,18 @@ async def search_products(
             # 3. 검색
             # 의도 기반 사용자 쿼리와 필터를 넣고 검색
             retriever = search_manager.get_retriever("configuable_faiss")
-            # 검색기에 필터를 적용하면 개수가 이상하게 적어지는 현상이 있음
-            # config = {"configurable": {"search_kwargs": {"k": 100, "filter": filter_dict}}}
-            config = {"configurable": {"search_kwargs": {"k": 100}}}
+
+            config = {"configurable": {"search_kwargs": {
+                "k": top_k, # 최종적으로 반환할 문서 수
+                "fetch_k": 500, # FAISS로부터 가져올 초기 문서 수
+                "filter": filter_dict
+            }}}
+
             results = retriever.invoke(intented_query, config=config)
-            # 그래서 검색 후 수동으로 필터링 함
-            # config = {"configurable": {"search_kwargs": {"k": 100}}}
-            # results = retriever.invoke(intented_query, config=config)
             
         elif retriever_type == "use_llm":
             retriever = search_manager.get_retriever("faiss")
-            answers = LLMService.search_proudct(query, retriever)
+            answers = LLMService.search_proudct('query', retriever)
             print(f"답변: {answers}")
 
             # LLM 답변에 포함된 goodsNo 리스트 추출 (효율적인 조회를 위해 set 사용)
@@ -165,7 +172,7 @@ async def search_products(
             results = retriever.invoke(query)
 
         # [정렬]
-        sorted_results = SortService.sort_products(results)
+        sorted_results = SortService.sort_products(results, top_k, intent)
 
         # TODO: 검색어를 key로 캐시를 사용한다면 여기에 구현
 
@@ -184,11 +191,14 @@ async def search_products(
         print(f"⚡ 소요 시간: {time.time() - timestamp:.2f}초")
         
         return SearchResponse(
-            products=products,
+            intent=str(intent),
+            intented_query=intented_query,
+            filter_dict=str(filter_dict),
             total_count=paginated_results['total_count'],
             page=paginated_results['current_page'],
             page_size=paginated_results['page_size'],
-            total_pages=paginated_results['total_pages']
+            total_pages=paginated_results['total_pages'],
+            products=products
         )
         
     except HTTPException:

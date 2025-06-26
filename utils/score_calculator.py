@@ -1,0 +1,89 @@
+def calculate_rank_score(metadata: dict, top_k:int) -> float:
+    """
+    랭킹 점수 계산 함수. 최대 3점
+    top_k 가 100 일 때, 1위는 3.0점 100위는 0.03점
+    """
+    top_score = 3
+    score = (top_k - metadata.get('similarity_rank') + 1) * top_score / top_k
+    return float(int(score * 10) / 10)  # 소수점 첫째자리까지, 둘째자리 버림
+    
+def calculate_brand_score(metadata: dict, brand: str) -> float:
+    """브랜드 매칭 점수 계산 함수. 최대 5점"""
+    score = 0.0
+    if not brand:
+        return score
+
+    # TODO: 브랜드명 그룹으로 확장. 예) 대표: 삼성 -> 삼성전자, 삼성전자(주)
+    brands = []
+    brands.append(brand)
+
+    for b in brands:
+        if b in metadata.get('BRND_NM', ''):
+            score += 5.0  # 증가: 브랜드 정확 매칭 더 중요하게
+        elif b in metadata.get('GOODS_NM', ''):
+            score += 2.0  # 증가: 상품명 매칭도 중요도 상승
+    return score
+
+def calculate_artc_score(metadata: dict, artc:str) -> float:
+    """품목 매칭 점수 계산 함수. 최대 4점"""
+    score = 0.0
+    if not artc:
+        return score
+    
+    # 품목매칭인 경우
+    if artc in metadata.get('ARTC_NM', ''):
+        score += 2.0
+
+    # 품목이 카테고리에 있는 경우
+    if artc in metadata.get('SGRP_NM', ''):
+        score += 2.0  # 증가: 소카테고리 매칭 더 중요하게
+    elif artc in metadata.get('MGRP_NM', ''):
+        score += 1.5  # 증가: 중카테고리 매칭
+    elif artc in metadata.get('LGRP_NM', ''):
+        score += 1.0  # 증가: 대카테고리 매칭
+
+    return score
+
+def calculate_hashtag_score(metadata: dict, artc:str, features:str) -> float:
+    """해시태그 매칭 점수 계산 함수. 해시태그 1개당 2 ~ 3.5점"""
+    score = 0.0
+    feature_list = []
+
+    if not artc and not features:
+        return score
+    
+    if features:
+        feature_list = features.replace(' ','').split(',')
+
+    # 품목이 관련키워드에 있을 경우
+    if artc and artc in metadata.get('SCH_KWD_NM', ''):
+        score += 2.0
+
+    # 특징이 관련키워드에 있을 경우
+    for feature in feature_list:
+        if feature in metadata.get('SCH_KWD_NM', ''):
+            score += 3.5
+
+    return score
+
+def calculate_features_score(metadata: dict, features:str) -> float:
+    """특징 매칭 점수 계산 함수. 특징 1개 당 3.5점"""
+    score = 0.0
+    feature_list = []
+
+    if features:
+        feature_list = features.replace(' ', '').split(',')
+
+    # 특징이 상품명이나 주요 특징 및 기능에 있을 경우
+    for feature in feature_list:
+        if feature in metadata.get('GOODS_NM', ''):
+            # print(f"Hit from GOODS_NM: {feature}")
+            score += 3.5
+        if feature in metadata.get('OPT_DISP_NM', ''):
+            # print(f"Hit from OPT_DISP_NM: {feature}")
+            score += 3.5
+        if feature in metadata.get('OPT_VAL_DESC', ''):
+            # print(f"Hit from OPT_VAL_DESC: {feature}")
+            score += 3.5
+
+    return score

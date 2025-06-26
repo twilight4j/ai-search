@@ -1,38 +1,47 @@
 import re
 
-def price_filter_with_llm(query, intent):
+def price_filter_with_llm(intent):
+    """가격 필터"""
     filter_dict = {}
-    # 가격
-    # if '가격' in query or '저렴' in query:
-    if "SALE_PRC" not in filter_dict:
-        filter_dict["SALE_PRC"] = {}
+    is_filter = False
+    if "PRICE" not in filter_dict:
+        filter_dict["DSCNT_SALE_PRC"] = {}
     
-    if intent["SALE_PRC_GTE"] > 0:
-        filter_dict["SALE_PRC"]["$gte"] = intent["SALE_PRC_GTE"]
-    if intent["SALE_PRC_LTE"] > 0:
-        filter_dict["SALE_PRC"]["$lte"] = intent["SALE_PRC_LTE"]
+    if intent["PRICE_GTE"] > 0:
+        filter_dict["DSCNT_SALE_PRC"]["$gte"] = intent["PRICE_GTE"]
+        is_filter = True
+    if intent["PRICE_LTE"] > 0:
+        filter_dict["DSCNT_SALE_PRC"]["$lte"] = intent["PRICE_LTE"]
+        is_filter = True
+
+    if not is_filter:
+        return {}
+    
     return filter_dict
 
-def brand_filter_with_llm(query, intent):
-    filter_dict = {}
-    # 브랜드
-    filter_dict["BRND_NM"] = intent["BRND_NM"]
+def brand_filter_with_llm(intent):
+    """브랜드 필터"""
+    return {"BRND_NM": intent["BRND_NM"]}
+
+def artc_filter_with_llm(intent):
+    """품목 필터"""
+    return  {"ARTC_NM": intent["ARTC_NM"]}
+
+def category_filter_with_llm(intent):
+    """카테고리 필터"""
+    # LGRP_NM이 리스트인지 확인
+    lgrp_nm = intent.get("LGRP_NM")
+    if isinstance(lgrp_nm, list):
+        # 여러 카테고리 중 하나라도 일치하면 통과하는 필터
+        filter_dict = {"LGRP_NM": {"$in": lgrp_nm}}
+    elif lgrp_nm is not None:
+        # 단일 값일 때
+        filter_dict = {"LGRP_NM": lgrp_nm}
+    else:
+        # 값이 없을 때
+        filter_dict = {}
     return filter_dict
 
-def artc_filter_with_llm(query, intent):
-    filter_dict = {}
-    # 품목
-    filter_dict["ARTC_NM"] = intent["ARTC_NM"]
-    return filter_dict
-
-def category_filter_with_llm(query, intent):
-    filter_dict = {}
-    # 카테고리
-    filter_dict["LGRP_NM"] = intent["LGRP_NM"]
-    return filter_dict
-
-def features_filter_with_llm(query, intent):
-    filter_dict = {}
-    # 주요 기능 및 특징
-    filter_dict["FEATURES"] = intent["FEATURES"]
-    return filter_dict
+def features_filter_with_llm(intent):
+    """주요기능 필터"""
+    return  {"FEATURES": intent["FEATURES"]}
