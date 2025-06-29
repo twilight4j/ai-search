@@ -4,6 +4,7 @@ from utils.llm_filter import brand_filter_with_llm
 from utils.llm_filter import category_filter_with_llm
 from utils.llm_filter import artc_filter_with_llm
 from utils.llm_filter import features_filter_with_llm
+from utils.llm_filter import review_point_filter_with_llm
 
 class FilterService:
     @staticmethod
@@ -21,7 +22,8 @@ class FilterService:
         # 카테고리 필터
         filter_dict.update(category_filter_with_llm(intent))
 
-        # TODO: 평점 필터
+        # 평점 필터
+        filter_dict.update(review_point_filter_with_llm(intent))
 
         # 브랜드 필터
         # filter_dict.update(brand_filter_with_llm(intent))

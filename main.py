@@ -177,7 +177,6 @@ async def search_products(
         # TODO: 검색어를 key로 캐시를 사용한다면 여기에 구현
 
         # [페이징]
-        # 정렬된 결과를 페이지네이션 처리
         paginated_results = PaginationService.paginate(
             items=sorted_results,
             page=page,
@@ -185,7 +184,6 @@ async def search_products(
         )
 
         # [결과 변환]
-        # ResultConverter를 사용하여 결과 변환
         products:List[ProductResponse] = ResultService.convert_to_products(paginated_results['items'])
         
         print(f"⚡ 소요 시간: {time.time() - timestamp:.2f}초")

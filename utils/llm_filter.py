@@ -4,7 +4,7 @@ def price_filter_with_llm(intent):
     """가격 필터"""
     filter_dict = {}
     is_filter = False
-    if "PRICE" not in filter_dict:
+    if "DSCNT_SALE_PRC" not in filter_dict:
         filter_dict["DSCNT_SALE_PRC"] = {}
     
     if intent["PRICE_GTE"] > 0:
@@ -45,3 +45,23 @@ def category_filter_with_llm(intent):
 def features_filter_with_llm(intent):
     """주요기능 필터"""
     return  {"FEATURES": intent["FEATURES"]}
+
+def review_point_filter_with_llm(intent):
+    """리뷰점수 필터"""
+    filter_dict = {}
+    is_filter = False
+    if "GDAS_SCR_SUM" not in filter_dict:
+        filter_dict["GDAS_SCR_SUM"] = {}
+    
+    if intent["REVIEW_GTE"] > 0:
+        filter_dict["GDAS_SCR_SUM"]["$gte"] = intent["REVIEW_GTE"]
+        is_filter = True
+    if intent["REVIEW_LTE"] > 0:
+        filter_dict["GDAS_SCR_SUM"]["$lte"] = intent["REVIEW_LTE"]
+        is_filter = True
+
+    if not is_filter:
+        return {}
+    
+    return filter_dict
+

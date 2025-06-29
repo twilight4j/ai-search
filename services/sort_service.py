@@ -6,6 +6,7 @@ from utils.score_calculator import calculate_brand_score
 from utils.score_calculator import calculate_features_score
 from utils.score_calculator import calculate_hashtag_score
 from utils.score_calculator import calculate_rank_score
+from utils.score_calculator import calculate_cards_score
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -72,11 +73,12 @@ class SortService:
                 calculate_brand_score(metadata, intent.get('BRND_NM')),
                 calculate_artc_score(metadata, intent.get('ARTC_NM')),
                 calculate_hashtag_score(metadata, intent.get('ARTC_NM'), intent.get('FEATURES')),
-                calculate_features_score(metadata, intent.get('FEATURES'))
+                calculate_features_score(metadata, intent.get('FEATURES')),
+                calculate_cards_score(metadata, intent.get('CARD_DC_NMS'))
             ]
             weight = sum(scores)
             metadata['weight'] = weight
-            metadata['weight_analysis'] = f"랭킹:{scores[0]}, 브랜드:{scores[1]}, 품목:{scores[2]}, 해시태그:{scores[3]}, 특징:{scores[4]}"
+            metadata['weight_analysis'] = f"랭킹:{scores[0]}, 브랜드:{scores[1]}, 품목:{scores[2]}, 해시태그:{scores[3]}, 특징:{scores[4]}, 할인카드:{scores[5]}"
 
             # SALES_UNIT 외부판매량 / DESC
             sales_unit = int(metadata.get('SALES_UNIT', 0))

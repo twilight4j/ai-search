@@ -33,7 +33,7 @@ class LLMManager:
                 PRICE_GTE: int = Field(description="가격범위 최소값. 예를 들어 100만원 이상 120만원 이하이면, 1000000. 가격에 대한 의도가 없다면 0.")
                 PRICE_LTE: int = Field(description="가격범위 최대값. 예를 들어 100만원 이상 120만원 이하이면, 1200000. 가격에 대한 의도가 없다면 0.")
                 BRND_NM: str = Field(description="브랜드명")
-                ARTC_NM: str = Field(description="품목")
+                ARTC_NM: str = Field(description="찾고 있는 상품의 품목. 예를 들어 에어컨, 냉장고, TV, 이어폰, 보조배터리 등.")
                 LGRP_NM: list[str] = Field(description="""카테고리명. 다음 예시 중 적합한 카테고리 최대 3개. 
             TV·영상가전
             가구·인테리어
@@ -59,7 +59,9 @@ class LLMManager:
             전문가 화상상담(description=영상통화로 구매 상담이 가능한 제품 모음)
             1인 가구를 위한 나노스퀘어(description=1인 세대를 위한 소형가전 모음)""")
                 FEATURES: str = Field(description="주요기능")
-                CARD_NMS: list[str] = Field(description="카드이름")
+                CARD_DC_NMS: list[str] = Field(description="할인카드이름")
+                REVIEW_GTE: float = Field(description="리뷰점수 최소값. 예를들어 3.0 이상 5.0 이하이면 3.0. 평점에 대한 의도가 없다면 0.0.")
+                REVIEW_LTE: float = Field(description="리뷰점수 최대값. 예를들어 3.0 이상 5.0 이하이면 5.0. 평점에 대한 의도가 없다면 0.0.")
 
             # 파서를 설정하고 프롬프트 템플릿에 지시사항을 주입합니다.
             parser = JsonOutputParser(pydantic_object=Intent)

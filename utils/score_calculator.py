@@ -31,15 +31,15 @@ def calculate_artc_score(metadata: dict, artc:str) -> float:
         return score
     
     # 품목매칭인 경우
-    if artc in metadata.get('ARTC_NM', ''):
+    if artc in metadata.get('ARTC_NM', '').replace('일반', ''):
         score += 2.0
 
     # 품목이 카테고리에 있는 경우
-    if artc in metadata.get('SGRP_NM', ''):
+    if artc in metadata.get('SGRP_NM', '').replace('일반', '').split('·'):
         score += 2.0  # 증가: 소카테고리 매칭 더 중요하게
-    elif artc in metadata.get('MGRP_NM', ''):
+    elif artc in metadata.get('MGRP_NM', '').replace('일반', '').split('·'):
         score += 1.5  # 증가: 중카테고리 매칭
-    elif artc in metadata.get('LGRP_NM', ''):
+    elif artc in metadata.get('LGRP_NM', '').replace('일반', '').split('·'):
         score += 1.0  # 증가: 대카테고리 매칭
 
     return score
@@ -61,7 +61,7 @@ def calculate_hashtag_score(metadata: dict, artc:str, features:str) -> float:
 
     # 특징이 관련키워드에 있을 경우
     for feature in feature_list:
-        if feature in metadata.get('SCH_KWD_NM', ''):
+        if feature in metadata.get('SCH_KWD_NM', '').split('#'):
             score += 3.5
 
     return score
@@ -77,13 +77,29 @@ def calculate_features_score(metadata: dict, features:str) -> float:
     # 특징이 상품명이나 주요 특징 및 기능에 있을 경우
     for feature in feature_list:
         if feature in metadata.get('GOODS_NM', ''):
-            # print(f"Hit from GOODS_NM: {feature}")
+            # print(f"Hit GOODS_NM: {feature}")
             score += 3.5
         if feature in metadata.get('OPT_DISP_NM', ''):
-            # print(f"Hit from OPT_DISP_NM: {feature}")
+            # print(f"Hit OPT_DISP_NM: {feature}")
             score += 3.5
         if feature in metadata.get('OPT_VAL_DESC', ''):
-            # print(f"Hit from OPT_VAL_DESC: {feature}")
+            # print(f"Hit OPT_VAL_DESC: {feature}")
             score += 3.5
+
+    return score
+
+def calculate_cards_score(metadata: dict, cardDcNms:list[str]) -> float:
+    """카드할인 매칭 점수 계산 함수. 카드 1개당 10점"""
+    score = 0.0
+
+    card_dc_nm_list = []
+    if cardDcNms:
+        card_dc_nm_list = cardDcNms
+
+    # 원하는 할인카드가 할인카드 목록에 있는 경우
+    for card_dc_nm in card_dc_nm_list:
+        if card_dc_nm in metadata.get('CARD_DC_NAME_LIST', ''):
+            score += 10
+            # print(f"Hit CARD_DC_NAME_LIST: {feature}")
 
     return score
