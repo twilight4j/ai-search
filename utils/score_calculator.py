@@ -79,11 +79,8 @@ def calculate_features_score(metadata: dict, features:str) -> float:
         if feature in metadata.get('GOODS_NM', ''):
             # print(f"Hit GOODS_NM: {feature}")
             score += 3.5
-        if feature in metadata.get('OPT_DISP_NM', ''):
+        if feature in metadata.get('FEATURES', ''):
             # print(f"Hit OPT_DISP_NM: {feature}")
-            score += 3.5
-        if feature in metadata.get('OPT_VAL_DESC', ''):
-            # print(f"Hit OPT_VAL_DESC: {feature}")
             score += 3.5
 
     return score

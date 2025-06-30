@@ -5,7 +5,8 @@ import uvicorn
 import logging
 import time
 from core.search_engine import SearchEngineManager
-from core.llm_manager import LLMManager
+from core.intent_manager import IntentManager
+from core.report_manager import ReportManager
 from services.result_service import ResultService
 from services.sort_service import SortService
 from models.response import ProductResponse, SearchResponse
@@ -13,8 +14,6 @@ from typing import Annotated
 from contextlib import asynccontextmanager
 from services.pagination_service import PaginationService
 from services.filter_service import FilterService
-from services.llm_service import LLMService
-from utils import tokenizer, NL_processor
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -30,7 +29,7 @@ async def lifespan(app: FastAPI):
     try:
         # 서버 시작 시 실행될 코드 (startup)
         search_manager.initialize()
-        llm_manager.initialize()
+        intent_manager.initialize()
         logger.info("서버 시작 완료")
     except Exception as e:
         logger.error(f"서버 시작 중 오류: {e}")
@@ -65,7 +64,7 @@ app.add_middleware(
 
 # 전역 매니저
 search_manager = SearchEngineManager()
-llm_manager = LLMManager()
+intent_manager = IntentManager()
 
 @app.get("/")
 async def root():
@@ -82,7 +81,7 @@ async def root():
 @app.get("/search", response_model=SearchResponse)
 async def search_products(
     query: str = Query(
-        default="냉장고",
+        default="롯데카드 할인되는 20만원대 방수 노이즈캔슬링 이어폰",
         description="검색어",
         min_length=1,
         max_length=100
@@ -99,22 +98,31 @@ async def search_products(
         description="페이지당 결과 수"
     ),
     retriever_type: Annotated[
-        Literal["bm25", "faiss", "bm25_faiss_73", "bm25_faiss_37", "intent_with_llm", "use_llm"],
+        Literal["bm25", "faiss", "bm25_faiss_73", "bm25_faiss_37", "intent_with_llm"],
         Query(description="검색 방식")
     ] = "intent_with_llm",
 ):
+    """
+    # 추천검색어
+    분류|키워드
+    --|--
+    제품특징, 가격 필터링 | 방수되는 20만원대 노이즈캔슬링 이어폰
+    제품특징, 가격 필터링, 할인카드 | 롯데카드 할인되는 20만원대 방수 노이즈캔슬링 이어폰
+    제품특징, 브랜드 | 100만원대 삼성 OLED 스마트TV 가성비 좋은 모델
+    제품특징, 평점 필터링 | 평점이 4.5 이상인 4도어 냉장고 추천해주세요
+    """
     try:
         timestamp = time.time()
         if not search_manager._initialized:
             raise HTTPException(status_code=503, detail="검색 엔진이 아직 초기화되지 않았습니다.")
         
-        if not llm_manager._initialized:
+        if not intent_manager._initialized:
             raise HTTPException(status_code=503, detail="의도분석 LLM이 아직 초기화되지 않았습니다.")
         
         if not query.strip():
             raise HTTPException(status_code=400, detail="검색 쿼리가 비어있습니다.")
 
-        # 검색할 최대 문서 수
+        #  검색할 최대 문서 수
         top_k = 100
         # 의도
         intent = {}
@@ -124,18 +132,18 @@ async def search_products(
 
             # 1. 의도 분석
             # LLM을 통한 의도 분석
-            intent_chain = llm_manager.get_intent_chain()
+            intent_chain = intent_manager.get_intent_chain()
             intent = intent_chain.invoke({"query": query})
-            print(f"의도 분석: {intent}")
+            print(f"🤔 의도 분석: {intent}")
 
-            # 의도 기반 사용자 쿼리
+            # 정제된 쿼리
             intented_query = intent['INTENTED_QUERY']
-            print(f"의도 기반 사용자 쿼리: {intented_query}")
+            print(f"🔍 정제된 쿼리: {intented_query}")
 
             # 2. 필터 생성
             # 의도 기반 필터
             filter_dict = FilterService.intent_based_filtering(query, intent)
-            print(f"의도 기반 필터: {filter_dict}")
+            print(f"✂️ 필터: {filter_dict}")
 
             # 3. 검색
             # 의도 기반 사용자 쿼리와 필터를 넣고 검색
@@ -148,25 +156,7 @@ async def search_products(
             }}}
 
             results = retriever.invoke(intented_query, config=config)
-            
-        elif retriever_type == "use_llm":
-            retriever = search_manager.get_retriever("faiss")
-            answers = LLMService.search_proudct('query', retriever)
-            print(f"답변: {answers}")
 
-            # LLM 답변에 포함된 goodsNo 리스트 추출 (효율적인 조회를 위해 set 사용)
-            answer_goods_nos = set()
-            if isinstance(answers, list):
-                answer_goods_nos = {answer['goodsNo'] for answer in answers if 'goodsNo' in answer}
-            elif isinstance(answers, dict) and 'goodsNo' in answers:
-                answer_goods_nos = {answers['goodsNo']}
-
-            # FAISS에서 전체 문서 가져오기
-            all_docs = search_manager._get_all_documents_from_faiss()
-
-            # goodsNo를 기준으로 문서 필터링
-            results = [doc for doc in all_docs if doc.metadata.get('GOODS_NO') in answer_goods_nos]
-            print(f"결과: {results}")
         else:
             retriever = search_manager.get_retriever(retriever_type)
             results = retriever.invoke(query)
@@ -186,7 +176,7 @@ async def search_products(
         # [결과 변환]
         products:List[ProductResponse] = ResultService.convert_to_products(paginated_results['items'])
         
-        print(f"⚡ 소요 시간: {time.time() - timestamp:.2f}초")
+        print(f"⌛ 총 소요 시간: {time.time() - timestamp:.2f}초")
         
         return SearchResponse(
             intent=str(intent),

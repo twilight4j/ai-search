@@ -17,21 +17,22 @@ class SortService:
         """
         검색 결과를 정렬 기준에 따라 정렬합니다.
         정렬 기준:
-        1) GOODS_STAT_SCT_CD !='03'/ DESC /* 03 진열상품 */
-        2) APPLIANCES_YN = 'Y' / DESC
-        3) weight / DESC
-        4) SALES_UNIT / DESC
-        5) SALE_QTY / DESC
-        6) GOODS_TP_CD IN ('05', '10') / DESC /* 05 렌탈상품 10 상담상품 */
-        7) GOODS_STAT_SCT_CD / ASC
-        8) GOODS_NO / DESC
+        1) SALE_STAT_CD / ASC /* 01 판매중 02 품절 */
+        2) GOODS_STAT_SCT_CD !='03'/ DESC /* 03 진열상품 */
+        3) APPLIANCES_YN = 'Y' / DESC
+        4) weight / DESC
+        5) SALES_UNIT / DESC
+        6) SALE_QTY / DESC
+        7) GOODS_TP_CD IN ('05', '10') / DESC /* 05 렌탈상품 10 상담상품 */
+        8) GOODS_STAT_SCT_CD / ASC
+        9) GOODS_NO / DESC
 
         가중치(weight) 모델
         1) 순위점수(similarity_rank)
         2) 브랜드(BRND_NM)
         3) 품목(ARTC_NM)
         4) 특징(FEATURES)
-        5) TODO: 할인카드(CARD_DC_NAME_LIST)
+        5) 할인카드(CARD_DC_NAME_LIST)
         """
 
         # 튜플 형태의 결과를 Document로 변환
@@ -48,6 +49,10 @@ class SortService:
 
         def get_sort_key(doc: Document) -> tuple:
             metadata = doc.metadata
+
+
+            # SALE_STAT_CD / ASC
+            sale_stat_cd = metadata.get('SALE_STAT_CD', '')
             
             # GOODS_STAT_SCT_CD !='03'/ DESC
             stat_sct_cd = metadata.get('GOODS_STAT_SCT_CD', '')
@@ -94,6 +99,7 @@ class SortService:
             goods_no = metadata.get('GOODS_NO', '')
             
             return (
+                sale_stat_cd, # ASC
                 -stat_sct_cd_is_not_03,  # DESC
                 -is_appliance,  # DESC
                 -weight,  # DESC

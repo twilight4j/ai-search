@@ -19,7 +19,7 @@ class ProductResponse(BaseModel):
     maxBenefitPrice: int = Field(..., description="최대혜택가")
     cardDcRate: int = Field(..., description="카드할인율")
     cardDcNameList: str = Field(..., description="할인카드")
-    featureInfo: str = Field(..., description="주요 특징 및 기능")
+    features: str = Field(..., description="주요 특징 및 기능")
     schKwdNm: str = Field(..., description="해시태그")
     saleQty: int = Field(..., description="월간판매량")
     salesUnit: int = Field(..., description="세일즈유닛")

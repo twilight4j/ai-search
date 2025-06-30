@@ -10,13 +10,6 @@ class ResultService:
         """
         products = []
         for doc in results:
-            
-            # feature 옵션이름과 값을 매핑하여 최대 3개까지만 생성
-            features = []
-            feature_values = doc.metadata.get("OPT_VAL_DESC", "").split(',')
-            feature_titles = doc.metadata.get("OPT_DISP_NM", "").split(',')
-            for i, (title, value) in enumerate(zip(feature_titles, feature_values)):
-                features.append(f"{title}:{value}")
 
             product = ProductResponse(
                 goodsNo=doc.metadata.get("GOODS_NO", "unknown"),
@@ -30,7 +23,7 @@ class ResultService:
                 maxBenefitPrice=int(doc.metadata.get("MAX_BENEFIT_PRICE", 0)),
                 cardDcRate=int(doc.metadata.get("CARD_DC_RATE", 0)),
                 cardDcNameList=doc.metadata.get("CARD_DC_NAME_LIST", "unknown"),
-                featureInfo=','.join(features),
+                features=doc.metadata.get("FEATURES", "unknown"),
                 schKwdNm=doc.metadata.get("SCH_KWD_NM", "unknown"),
                 saleQty=int(doc.metadata.get("SALE_QTY", 0)),
                 salesUnit=int(doc.metadata.get("SALES_UNIT", 0)),

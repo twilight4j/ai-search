@@ -4,10 +4,11 @@ Core package for AI Search API
 
 from .config import Settings
 from .search_engine import SearchEngineManager
-from .llm_manager import LLMManager
+from .intent_manager import IntentManager
 
 __all__ = [
     "Settings",
     "SearchEngineManager",
-    "LLMManager"
+    "IntentManager",
+    "ReportManager"
 ]
