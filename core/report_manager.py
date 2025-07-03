@@ -1,8 +1,7 @@
 import logging
 from langchain_openai import ChatOpenAI
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
-from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
@@ -28,19 +27,18 @@ class ReportManager:
             logger.info("리포트 LLM 초기화 시작...")
 
             # 원하는 데이터 구조를 정의합니다.
-            class ReportResponse(BaseModel):
-                """리포트 결과 모델"""
+            class Report(BaseModel):
                 goodsNo: str = Field(..., description="상품번호")
                 recommendation: str = Field(..., description="상품 추천 이유")
 
             # 파서를 설정하고 프롬프트 템플릿에 지시사항을 주입합니다.
-            parser = JsonOutputParser(pydantic_object=ReportResponse)
+            parser = JsonOutputParser(pydantic_object=Report)
             # print(parser.get_format_instructions())
 
             # 프롬프트를 생성합니다.
             prompt = ChatPromptTemplate.from_messages(
                 [
-                    ("system", "당신은 가전전문 e커머스 상품 추천 AI 어시스턴트 입니다. 사용자가 검색어(question)를 참고하여 상품 추천 이유를 설명해주세요."),
+                    ("system", "당신은 가전전문 e커머스 상품 추천 AI 어시스턴트 입니다. 사용자 검색어(Question)를 참고하여 상품 추천 이유를 간단하고. 친절하게 설명해주세요. 주어진 Context 외 확인되지 않은 사실을 이야기 해서는 안됩니다. 응답속도는 최대한 빨리 부탁해요."),
                     ("user", "#Format: {format_instructions}\n\n#Context: {context}\n\n#Question: {query}"),
                 ]
             )
@@ -69,7 +67,7 @@ class ReportManager:
         """
         if not self._initialized:
             raise Exception("리포트 LLM 이 아직 초기화되지 않았습니다.")
-        return self.intent_chain
+        return self.report_chain
 
     # LLM 을 통한 검색 백업 코드(미사용)
     @staticmethod

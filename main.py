@@ -1,23 +1,28 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import List, Optional, Literal
+from typing import List, Literal, Annotated
 import uvicorn
 import logging
 import time
+from contextlib import asynccontextmanager
+
 from core.search_engine import SearchEngineManager
 from core.intent_manager import IntentManager
 from core.report_manager import ReportManager
 from services.result_service import ResultService
 from services.sort_service import SortService
-from models.response import ProductResponse, SearchResponse
-from typing import Annotated
-from contextlib import asynccontextmanager
 from services.pagination_service import PaginationService
 from services.filter_service import FilterService
+from models.response import ReportResponse, ProductResponse, SearchResponse
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# 전역 매니저
+search_manager = SearchEngineManager()
+intent_manager = IntentManager()
+report_manager = ReportManager()
 
 # asynccontextmanager 데코레이터를 사용하여 비동기 컨텍스트 매니저를 정의합니다.
 @asynccontextmanager
@@ -30,6 +35,7 @@ async def lifespan(app: FastAPI):
         # 서버 시작 시 실행될 코드 (startup)
         search_manager.initialize()
         intent_manager.initialize()
+        report_manager.initialize()
         logger.info("서버 시작 완료")
     except Exception as e:
         logger.error(f"서버 시작 중 오류: {e}")
@@ -62,9 +68,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 전역 매니저
-search_manager = SearchEngineManager()
-intent_manager = IntentManager()
 
 @app.get("/")
 async def root():
@@ -110,6 +113,10 @@ async def search_products(
     제품특징, 가격 필터링, 할인카드 | 롯데카드 할인되는 20만원대 방수 노이즈캔슬링 이어폰
     제품특징, 브랜드 | 100만원대 삼성 OLED 스마트TV 가성비 좋은 모델
     제품특징, 평점 필터링 | 평점이 4.5 이상인 4도어 냉장고 추천해주세요
+    제품특징, 가격 필터링 | 홈카페용 50~100만원 세련된 디자인의 커피머신
+    문맥이해 | 원룸용 냉장고 추천
+    제품특징 다중조건, 문맥이해 | 조용하고 전기요금 적게 나오는 에어컨
+    안심케어, 문맥이해 | 냉장고 클리닝 후기 좋은 상품 추천해줘
     """
     try:
         timestamp = time.time()
@@ -132,9 +139,11 @@ async def search_products(
 
             # 1. 의도 분석
             # LLM을 통한 의도 분석
+            intent_timestamp = time.time()
             intent_chain = intent_manager.get_intent_chain()
             intent = intent_chain.invoke({"query": query})
             print(f"🤔 의도 분석: {intent}")
+            print(f"⚡ LLM 의도 분석 소요 시간: {time.time() - timestamp:.2f}초")
 
             # 정제된 쿼리
             intented_query = intent['INTENTED_QUERY']
@@ -164,7 +173,7 @@ async def search_products(
         # [정렬]
         sorted_results = SortService.sort_products(results, top_k, intent)
 
-        # TODO: 검색어를 key로 캐시를 사용한다면 여기에 구현
+        # TODO: query를 key로 캐시를 사용한다면 여기에 구현
 
         # [페이징]
         paginated_results = PaginationService.paginate(
@@ -174,19 +183,81 @@ async def search_products(
         )
 
         # [결과 변환]
-        products:List[ProductResponse] = ResultService.convert_to_products(paginated_results['items'])
+        product_response:List[ProductResponse] = ResultService.convert_to_products(paginated_results['items'])
+        intent_response = ResultService.convert_to_intent_response(intent)
+        filter_response = ResultService.convert_to_filter_response(filter_dict)
         
         print(f"⌛ 총 소요 시간: {time.time() - timestamp:.2f}초")
         
         return SearchResponse(
-            intent=str(intent),
-            intented_query=intented_query,
-            filter_dict=str(filter_dict),
+            intent=intent_response,
+            filter=filter_response,
             total_count=paginated_results['total_count'],
             page=paginated_results['current_page'],
             page_size=paginated_results['page_size'],
             total_pages=paginated_results['total_pages'],
-            products=products
+            products=product_response   
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"에러 발생 라인: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+    
+@app.get("/report", response_model=ReportResponse)
+async def get_report(
+    query: str = Query(
+        default="롯데카드 할인되는 20만원대 방수 노이즈캔슬링 이어폰",
+        description="검색어",
+        min_length=1,
+        max_length=100
+    ),
+    goodsNo: str = Query(
+        default="0022138866",
+        description="상품번호"
+    )
+):
+    try:
+        timestamp = time.time()
+        
+        if not search_manager._initialized:
+            raise HTTPException(status_code=503, detail="검색 엔진이 아직 초기화되지 않았습니다.")
+        
+        if not report_manager._initialized:
+            raise HTTPException(status_code=503, detail="리포트 LLM이 아직 초기화되지 않았습니다.")
+        
+        if not query.strip():
+            raise HTTPException(status_code=400, detail="검색 쿼리가 비어있습니다.")
+        
+        if not goodsNo.strip():
+            raise HTTPException(status_code=400, detail="상품번호가 비어있습니다.")
+        
+        # 상품번호 기준으로 상품정보 찾기
+        vectorstore = search_manager.get_vectorestore("faiss")
+        docs = list(vectorstore.docstore._dict.values())
+
+        product_context = {}
+        for doc in docs:
+            if doc.metadata['GOODS_NO'] == goodsNo:
+                product_context = doc.page_content
+                break
+
+        # LLM 을 통해 추천 이유 가져오기
+        report_chain = report_manager.get_report_chain()
+        report = report_chain.invoke({"query": query, "context": product_context})
+
+        print(f"🤔 추천이유: {report['recommendation']}")
+        
+        print(f"⌛ 총 소요 시간: {time.time() - timestamp:.2f}초")
+        
+        return ReportResponse(
+            goodsNo=goodsNo,
+            recommendation=report['recommendation']
         )
         
     except HTTPException:

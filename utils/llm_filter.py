@@ -29,17 +29,19 @@ def artc_filter_with_llm(intent):
 
 def category_filter_with_llm(intent):
     """카테고리 필터"""
-    # LGRP_NM이 리스트인지 확인
+    filter_dict = {}
+
+    # 대카테고리
     lgrp_nm = intent.get("LGRP_NM")
-    if isinstance(lgrp_nm, list):
+
+    # 찾는 상품이 무형의 서비스라면, 대카테고리 다시 세팅
+    if intent.get("SERVICE_YN") == 'Y':
+        lgrp_nm = ['안심케어', '방문컨설팅']
+    
+    if lgrp_nm:
         # 여러 카테고리 중 하나라도 일치하면 통과하는 필터
-        filter_dict = {"LGRP_NM": {"$in": lgrp_nm}}
-    elif lgrp_nm is not None:
-        # 단일 값일 때
-        filter_dict = {"LGRP_NM": lgrp_nm}
-    else:
-        # 값이 없을 때
-        filter_dict = {}
+        filter_dict = {"LGRP_NM": {"$in": lgrp_nm}}    
+
     return filter_dict
 
 def features_filter_with_llm(intent):

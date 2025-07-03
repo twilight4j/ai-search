@@ -1,8 +1,6 @@
 import logging
 from langchain_openai import ChatOpenAI
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
-from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
@@ -54,14 +52,15 @@ class IntentManager:
             음향가전
             뷰티·이미용가전
             문구·악기·공구
-            안심케어(description=가전제품 클리닝, 교체, 이사, 재설치 등의 서비스)
-            방문컨설팅(description=가전제품 고장, 수리 서비스)
+            안심케어(description=가전제품 클리닝, 보험, 설치, 인테리어 등의 서비스)
+            방문컨설팅(description=가전제품 고장, 오작동과 같은 불편 점검 서비스)
             전문가 화상상담(description=영상통화로 구매 상담이 가능한 제품 모음)
             1인 가구를 위한 나노스퀘어(description=1인 세대를 위한 소형가전 모음)""")
                 FEATURES: str = Field(description="주요기능")
                 CARD_DC_NMS: list[str] = Field(description="할인카드이름")
                 REVIEW_GTE: float = Field(description="리뷰점수 최소값. 예를들어 3.0 이상 5.0 이하이면 3.0. 평점에 대한 의도가 없다면 0.0.")
                 REVIEW_LTE: float = Field(description="리뷰점수 최대값. 예를들어 3.0 이상 5.0 이하이면 5.0. 평점에 대한 의도가 없다면 0.0.")
+                SERVICE_YN: str = Field(description="서비스여부. 사용자가 찾고 있는 것이 클리닝, 보험, 설치, 인테리어, 불편(고장, 오작동)점검 같이 무형의 서비스라면 Y. 아니면 N.")
 
             # 파서를 설정하고 프롬프트 템플릿에 지시사항을 주입합니다.
             parser = JsonOutputParser(pydantic_object=Intent)
