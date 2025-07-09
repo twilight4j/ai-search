@@ -57,11 +57,11 @@ class IntentManager:
             방문컨설팅(description=가전제품 고장, 오작동과 같은 불편 점검 서비스)
             전문가 화상상담(description=영상통화로 구매 상담이 가능한 제품 모음)
             1인 가구를 위한 나노스퀘어(description=1인 세대를 위한 소형가전 모음)""")
-                FEATURES: list[str] = Field(description="주요기능")
+                FEATURES: list[str] = Field(description="제품특징 및 주요 기능")
                 CARD_DC_NMS: list[str] = Field(description="할인카드이름")
                 REVIEW_GTE: float = Field(description="리뷰점수 최소값. 예를들어 3.0 이상 5.0 이하이면 3.0. 평점에 대한 의도가 없다면 0.0.")
                 REVIEW_LTE: float = Field(description="리뷰점수 최대값. 예를들어 3.0 이상 5.0 이하이면 5.0. 평점에 대한 의도가 없다면 0.0.")
-                SERVICE_YN: str = Field(description="서비스여부. 사용자가 찾고 있는 것이 클리닝, 보험, 설치, 인테리어, 불편(고장, 오작동)점검 같이 무형의 서비스라면 Y. 아니면 N.")
+                SERVICE_YN: str = Field(description="사용자가 찾고 있는 것이 클리닝, 보험, 설치, 인테리어, 불편(고장, 오작동)점검 같이 무형의 서비스라면 Y. 아니면 N.")
 
             # 파서를 설정하고 프롬프트 템플릿에 지시사항을 주입합니다.
             parser = JsonOutputParser(pydantic_object=Intent)
@@ -70,7 +70,7 @@ class IntentManager:
             # 프롬프트를 생성합니다.
             prompt = ChatPromptTemplate.from_messages(
                 [
-                    ("system", "당신은 가전전문 e커머스 검색 AI 어시스턴트 입니다. 사용자의 검색어를 분석하여, 그 의도에 맞는 최적의 검색 필터 조건을 완성해야 합니다. 2초안에 응답해야 합니다."),
+                    ("system", "당신은 가전전문 e커머스 검색 AI 어시스턴트 입니다. 사용자의 검색어를 분석하여, 그 의도에 맞는 검색 필터 조건을 완성해야 합니다. 깊게 생각하지 말고 2초안에 빨리 응답해야 합니다."),
                     ("user", "#Format: {format_instructions}\n\n#Question: {query}"),
                 ]
             )

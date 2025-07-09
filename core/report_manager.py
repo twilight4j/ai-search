@@ -26,6 +26,7 @@ class ReportManager:
 
             logger.info("리포트 LLM 초기화 시작...")
 
+            # TODO: 10개씩 조회해서 리스트로 반환하는 형태로 변경하기 - LLM 호출 횟수를 최소화 하여 성능개선
             # 원하는 데이터 구조를 정의합니다.
             class Report(BaseModel):
                 goodsNo: str = Field(..., description="상품번호")
@@ -46,7 +47,7 @@ class ReportManager:
             prompt = prompt.partial(format_instructions=parser.get_format_instructions())
 
             # OpenAI 객체를 생성합니다.
-            model = ChatOpenAI(temperature=0, model_name="gpt-4.1-mini")
+            model = ChatOpenAI(temperature=0, model_name="gpt-4.1-nano")
 
             # 체인을 구성합니다.
             self.report_chain = prompt | model | parser

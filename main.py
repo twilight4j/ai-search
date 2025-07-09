@@ -5,8 +5,8 @@ import uvicorn
 import logging
 import time
 from contextlib import asynccontextmanager
-# from langchain_community.globals import set_llm_cache
-# from langchain_community.cache import InMemoryCache
+from langchain.globals import set_llm_cache
+from langchain_community.cache import InMemoryCache
 
 from core.search_engine import SearchEngineManager
 from core.intent_manager import IntentManager
@@ -86,7 +86,7 @@ async def root():
 @app.get("/search", response_model=SearchResponse)
 async def search_products(
     query: str = Query(
-        default="롯데카드 할인되는 20만원대 방수 노이즈캔슬링 이어폰",
+        default="15인치 램 16기가 노트북",
         description="검색어",
         min_length=1,
         max_length=100
@@ -142,7 +142,7 @@ async def search_products(
             # 1. 의도 분석
             # LLM을 통한 의도 분석
             intent_timestamp = time.time()
-            # set_llm_cache(InMemoryCache())
+            set_llm_cache(InMemoryCache())
             intent_chain = intent_manager.get_intent_chain()
             intent = intent_chain.invoke({"query": query})
             cleaned_intent = intent_manager.get_cleaned_intent(intent, query)
