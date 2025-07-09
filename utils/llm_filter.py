@@ -39,7 +39,10 @@ def category_filter_with_llm(intent):
     # 중카테고리
     mgrp_nm = intent.get("MGRP_NM")
     if mgrp_nm:
-        filter_dict = {"MGRP_NM": {"$in": mgrp_nm}}    
+        if filter_dict:
+            filter_dict.update({"MGRP_NM": {"$in": mgrp_nm}})
+        else:
+            filter_dict = {"MGRP_NM": {"$in": mgrp_nm}}
 
     return filter_dict
 
