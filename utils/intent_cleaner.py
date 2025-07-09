@@ -63,7 +63,7 @@ def _clean_category_intent(intent, query):
         cleaned_lgrp_nms.append('안심케어')
         cleaned_lgrp_nms.append('방문컨설팅')
 
-    if cleaned_lgrp_nms and cleaned_mgrp_nms:
+    if cleaned_lgrp_nms:
         return cleaned_lgrp_nms, cleaned_mgrp_nms
     else:
         return lgrp_nms, mgrp_nms
