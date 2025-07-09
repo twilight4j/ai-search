@@ -5,6 +5,8 @@ import uvicorn
 import logging
 import time
 from contextlib import asynccontextmanager
+# from langchain_community.globals import set_llm_cache
+# from langchain_community.cache import InMemoryCache
 
 from core.search_engine import SearchEngineManager
 from core.intent_manager import IntentManager
@@ -109,14 +111,14 @@ async def search_products(
     # 추천검색어
     분류|키워드
     --|--
-    제품특징, 가격 필터링 | 방수되는 20만원대 노이즈캔슬링 이어폰
-    제품특징, 가격 필터링, 할인카드 | 롯데카드 할인되는 20만원대 방수 노이즈캔슬링 이어폰
-    제품특징, 브랜드 | 100만원대 삼성 OLED 스마트TV 가성비 좋은 모델
+    제품특징 다중조건 | 15인치 램 16기가 노트북
+    카드할인 | 롯데카드 할인되는 에어컨
+    제품특징, 브랜드, 가격 필터링 | 100만원대 삼성 OLED 스마트TV 가성비 좋은 모델
     제품특징, 평점 필터링 | 평점이 4.5 이상인 4도어 냉장고 추천해주세요
-    제품특징, 가격 필터링 | 홈카페용 50~100만원 세련된 디자인의 커피머신
     문맥이해 | 원룸용 냉장고 추천
     제품특징 다중조건, 문맥이해 | 조용하고 전기요금 적게 나오는 에어컨
     안심케어, 문맥이해 | 냉장고 클리닝 후기 좋은 상품 추천해줘
+    오타교정 | 자급제 ㅎ ㅠ대폰
     """
     try:
         timestamp = time.time()
@@ -129,7 +131,7 @@ async def search_products(
         if not query.strip():
             raise HTTPException(status_code=400, detail="검색 쿼리가 비어있습니다.")
 
-        #  검색할 최대 문서 수
+        # 검색할 최대 문서 수
         top_k = 100
         # 의도
         intent = {}
@@ -140,10 +142,13 @@ async def search_products(
             # 1. 의도 분석
             # LLM을 통한 의도 분석
             intent_timestamp = time.time()
+            # set_llm_cache(InMemoryCache())
             intent_chain = intent_manager.get_intent_chain()
             intent = intent_chain.invoke({"query": query})
+            cleaned_intent = intent_manager.get_cleaned_intent(intent, query)
             print(f"🤔 의도 분석: {intent}")
-            print(f"⚡ LLM 의도 분석 소요 시간: {time.time() - timestamp:.2f}초")
+            print(f"🤔 정제된 의도 분석: {cleaned_intent}")
+            print(f"⚡ LLM 의도 분석 소요 시간: {time.time() - intent_timestamp:.2f}초")
 
             # 정제된 쿼리
             intented_query = intent['INTENTED_QUERY']
@@ -151,7 +156,7 @@ async def search_products(
 
             # 2. 필터 생성
             # 의도 기반 필터
-            filter_dict = FilterService.intent_based_filtering(query, intent)
+            filter_dict = FilterService.intent_based_filtering(query, cleaned_intent)
             print(f"✂️ 필터: {filter_dict}")
 
             # 3. 검색
@@ -171,7 +176,7 @@ async def search_products(
             results = retriever.invoke(query)
 
         # [정렬]
-        sorted_results = SortService.sort_products(results, top_k, intent)
+        sorted_results = SortService.sort_products(results, top_k, cleaned_intent)
 
         # TODO: query를 key로 캐시를 사용한다면 여기에 구현
 
@@ -182,9 +187,9 @@ async def search_products(
             page_size=pageSize
         )
 
-        # [결과 변환]
+        # [결과 변환 ]
         product_response:List[ProductResponse] = ResultService.convert_to_products(paginated_results['items'])
-        intent_response = ResultService.convert_to_intent_response(intent)
+        intent_response = ResultService.convert_to_intent_response(cleaned_intent)
         filter_response = ResultService.convert_to_filter_response(filter_dict)
         
         print(f"⌛ 총 소요 시간: {time.time() - timestamp:.2f}초")

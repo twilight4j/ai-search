@@ -33,14 +33,13 @@ def category_filter_with_llm(intent):
 
     # 대카테고리
     lgrp_nm = intent.get("LGRP_NM")
-
-    # 찾는 상품이 무형의 서비스라면, 대카테고리 다시 세팅
-    if intent.get("SERVICE_YN") == 'Y':
-        lgrp_nm = ['안심케어', '방문컨설팅']
-    
     if lgrp_nm:
-        # 여러 카테고리 중 하나라도 일치하면 통과하는 필터
         filter_dict = {"LGRP_NM": {"$in": lgrp_nm}}    
+
+    # 중카테고리
+    mgrp_nm = intent.get("MGRP_NM")
+    if mgrp_nm:
+        filter_dict = {"MGRP_NM": {"$in": mgrp_nm}}    
 
     return filter_dict
 

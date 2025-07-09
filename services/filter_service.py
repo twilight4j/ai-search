@@ -1,9 +1,5 @@
-from utils.custom_filter import price_filter_with_custom
 from utils.llm_filter import price_filter_with_llm
-from utils.llm_filter import brand_filter_with_llm
 from utils.llm_filter import category_filter_with_llm
-from utils.llm_filter import artc_filter_with_llm
-from utils.llm_filter import features_filter_with_llm
 from utils.llm_filter import review_point_filter_with_llm
 
 class FilterService:
@@ -19,7 +15,8 @@ class FilterService:
         # filter_dict.update(price_filter_with_custom(query) or price_filter_with_llm(intent))
         filter_dict.update(price_filter_with_llm(intent))
 
-        # 카테고리 필터
+        # 카테고리 필터, 커스텀 필터 우선 적용
+        # filter_dict.update(category_filter_with_custom(intent, query) or category_filter_with_llm(intent))
         filter_dict.update(category_filter_with_llm(intent))
 
         # 평점 필터

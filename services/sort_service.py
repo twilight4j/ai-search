@@ -1,6 +1,7 @@
 import logging
 from typing import List, Dict, Any, Tuple, Union
 from langchain.schema import Document
+from utils.score_calculator import calculate_default_score
 from utils.score_calculator import calculate_artc_score
 from utils.score_calculator import calculate_brand_score
 from utils.score_calculator import calculate_features_score
@@ -21,18 +22,20 @@ class SortService:
         2) GOODS_STAT_SCT_CD !='03'/ DESC /* 03 진열상품 */
         3) APPLIANCES_YN = 'Y' / DESC
         4) weight / DESC
-        5) SALES_UNIT / DESC
-        6) SALE_QTY / DESC
-        7) GOODS_TP_CD IN ('05', '10') / DESC /* 05 렌탈상품 10 상담상품 */
-        8) GOODS_STAT_SCT_CD / ASC
-        9) GOODS_NO / DESC
+        5) MDL_LNCH_DT / DESC
+        6) SALES_UNIT / DESC
+        7) SALE_QTY / DESC
+        8) GOODS_TP_CD IN ('05', '10') / DESC /* 05 렌탈상품 10 상담상품 */
+        9) GOODS_STAT_SCT_CD / ASC
+        10) GOODS_NO / DESC
 
         가중치(weight) 모델
         1) 순위점수(similarity_rank)
-        2) 브랜드(BRND_NM)
-        3) 품목(ARTC_NM)
-        4) 특징(FEATURES)
-        5) 할인카드(CARD_DC_NAME_LIST)
+        2) 기본점수
+        3) 브랜드(BRND_NM)
+        4) 품목(ARTC_NM)
+        5) 특징(FEATURES)
+        6) 할인카드(CARD_DC_NAME_LIST)
         """
 
         # 튜플 형태의 결과를 Document로 변환
@@ -74,8 +77,9 @@ class SortService:
             # metadata['weight_analysis'] = f"랭킹:{rank_score}, 브랜드:{brand_score}, 품목:{artc_score}, 해시태그:{hashtag_score}, 특징:{features_score}"
 
             scores:list[float] = [
+                calculate_default_score(metadata),
                 calculate_rank_score(metadata, top_k),
-                calculate_brand_score(metadata, intent.get('BRND_NM')),
+                calculate_brand_score(metadata, intent.get('BRND_NM'), intent.get('ARTC_NM')),
                 calculate_artc_score(metadata, intent.get('ARTC_NM')),
                 calculate_hashtag_score(metadata, intent.get('ARTC_NM'), intent.get('FEATURES')),
                 calculate_features_score(metadata, intent.get('FEATURES')),
@@ -83,7 +87,10 @@ class SortService:
             ]
             weight = sum(scores)
             metadata['weight'] = weight
-            metadata['weight_analysis'] = f"랭킹:{scores[0]}, 브랜드:{scores[1]}, 품목:{scores[2]}, 해시태그:{scores[3]}, 특징:{scores[4]}, 할인카드:{scores[5]}"
+            metadata['weight_analysis'] = f"기본:{scores[0]}, 랭킹:{scores[1]}, 브랜드:{scores[2]}, 품목:{scores[3]}, 해시태그:{scores[4]}, 특징:{scores[5]}, 할인카드:{scores[6]}"
+
+            # MDL_LNCH_DT 모델출시일 / DESC
+            mdlLnchDt = int(metadata.get('MDL_LNCH_DT', '99991231'))
 
             # SALES_UNIT 외부판매량 / DESC
             sales_unit = int(metadata.get('SALES_UNIT', 0))
@@ -103,6 +110,7 @@ class SortService:
                 -stat_sct_cd_is_not_03,  # DESC
                 -is_appliance,  # DESC
                 -weight,  # DESC
+                -mdlLnchDt, # DESC
                 -sales_unit, # DESC
                 -sale_qty, # DESC
                 -is_target_type,  # DESC

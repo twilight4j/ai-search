@@ -84,6 +84,12 @@ class ResultService:
         if lgrpNm_list:
             lgrpNm = ', '.join(lgrpNm_list)
 
+        # 주요기능 및 특징
+        features:str = ''
+        feature_list = intent.get('FEATURES')
+        if feature_list:
+            features = ', '.join(feature_list)
+
         # 할인카드
         cardDcNm:str = ''
         cardDcNm_list = intent.get('CARD_DC_NMS')
@@ -112,7 +118,7 @@ class ResultService:
             brndNm=intent.get('BRND_NM', ''),
             artcNm=intent.get('ARTC_NM', ''),
             lgrpNm=lgrpNm,
-            features=intent.get('FEATURES', ''),
+            features=features,
             cardDcNm=cardDcNm,
             review=review,
             etc=etc
@@ -158,6 +164,12 @@ class ResultService:
             if lgrpNm_list:
                 lgrpNm = ', '.join(lgrpNm_list)
 
+        mgrpNm:str = ''
+        if filter_dict.get('MGRP_NM'): 
+            mgrpNm_list = filter_dict.get('MGRP_NM').get('$in')
+            if mgrpNm_list:
+                mgrpNm = ', '.join(mgrpNm_list)
+
         # 리뷰필터
         review:str = ''
         if filter_dict.get('GDAS_SCR_SUM'):
@@ -173,6 +185,7 @@ class ResultService:
         filter_response = FilterResponse(
             dscntSalePrc=dscntSalePrc,
             lgrpNm=lgrpNm,
+            mgrpNm=mgrpNm,
             review=review,
         )
         return filter_response

@@ -36,6 +36,7 @@ class FilterResponse(BaseModel):
     """필터 응답 모델"""
     dscntSalePrc: str = Field(..., description="가격")
     lgrpNm: str = Field(..., description="대카테고리")
+    mgrpNm: str = Field(..., description="중대카테고리")
     review: str = Field(..., description="리뷰점수")
 
 class IntentResponse(BaseModel):

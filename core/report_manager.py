@@ -38,7 +38,7 @@ class ReportManager:
             # 프롬프트를 생성합니다.
             prompt = ChatPromptTemplate.from_messages(
                 [
-                    ("system", "당신은 가전전문 e커머스 상품 추천 AI 어시스턴트 입니다. 사용자 검색어(Question)를 참고하여 상품 추천 이유를 간단하고. 친절하게 설명해주세요. 주어진 Context 외 확인되지 않은 사실을 이야기 해서는 안됩니다. 응답속도는 최대한 빨리 부탁해요."),
+                    ("system", "당신은 가전전문 e커머스 상품 추천 AI 어시스턴트 입니다. 사용자 검색어(Question)를 참고하여 상품 추천 이유를 간단하고. 친절하게 설명해주세요. 주어진 Context 외 확인되지 않은 사실을 이야기 해서는 안됩니다. 2초안에 응답해야 합니다."),
                     ("user", "#Format: {format_instructions}\n\n#Context: {context}\n\n#Question: {query}"),
                 ]
             )
